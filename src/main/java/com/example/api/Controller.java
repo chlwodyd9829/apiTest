@@ -1,5 +1,7 @@
 package com.example.api;
 
+import com.example.api.exception.UserExist;
+import com.example.api.exception.UserNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,16 +29,24 @@ public class Controller {
         List<UserTable> all = userRepository.findAll();
         return all;
     }
+    @GetMapping("/{id}")
+    public UserTable findUser(@PathVariable Long id){
+        UserTable findUser = userRepository.findById(id).orElseThrow(() -> {
+            throw new UserNotFoundException("존재하지 않는 사용자");
+        });
+        return findUser;
+    }
     /**
      * 삽입
      */
     @PostMapping(value = "/insert")
-    public HttpStatus insert(@RequestBody UserTable data){
-        UserTable saveUser = userRepository.save(data);
-        if(saveUser == null){
-            return HttpStatus.INTERNAL_SERVER_ERROR;
+    public UserTable insert(@RequestBody UserTable data){
+        UserTable findUser = userRepository.findByName(data.getName()).orElse(null);
+        if(findUser != null){
+            throw new UserExist("이미 존재하는 사용자");
         }
-        return HttpStatus.CREATED;
+        UserTable save = userRepository.save(data);
+        return save;
     }
     /**
      * 삭제
@@ -44,7 +54,7 @@ public class Controller {
     @DeleteMapping("/delete/{id}")
     public HttpStatus delete(@PathVariable Long id, @RequestBody UserTable user){
         UserTable userTable = userRepository.findById(id).orElseThrow(()->{
-            return new IllegalArgumentException("삭제 실패");
+            throw new UserNotFoundException("존재하지 않는 사용자");
         });
         userRepository.delete(userTable);
         return HttpStatus.OK;
@@ -54,12 +64,12 @@ public class Controller {
      */
     @Transactional
     @PutMapping("/update/{id}")
-    public HttpStatus update(@PathVariable Long id,@RequestBody UserTable userTable){
+    public UserTable update(@PathVariable Long id,@RequestBody UserTable userTable){
         UserTable findUser = userRepository.findById(id).orElseThrow(() -> {
-            return new IllegalArgumentException("수정 실패");
+            throw new UserNotFoundException("존재하지 않는 사용자");
         });
         findUser.setName(userTable.getName());
         findUser.setAge(userTable.getAge());
-        return HttpStatus.OK;
+        return findUser;
     }
 }
